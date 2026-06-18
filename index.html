@@ -182,10 +182,10 @@
   const map = L.map('map', { zoomControl: true }).setView([15, -20], 3);
 
   L.tileLayer(
-    'https://server.arcgisonline.com/ArcGIS/rest/services/World_Physical_Map/MapServer/tile/{z}/{y}/{x}',
+    'https://tiles.stadiamaps.com/tiles/stamen_watercolor/{z}/{x}/{y}.jpg',
     {
-      attribution: 'Tiles &copy; Esri &mdash; Source: US National Park Service',
-      maxZoom: 10,
+      attribution: 'Map tiles by <a href="https://stamen.com">Stamen Design</a>, CC BY 3.0 &mdash; Map data &copy; <a href="https://openstreetmap.org">OpenStreetMap</a>',
+      maxZoom: 16,
     }
   ).addTo(map);
 
