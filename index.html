@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Church Slavery Atlas</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; font-family: Georgia, 'Times New Roman', serif; }
+    #map { height: 100vh; width: 100%; }
+
+    #controls {
+      position: fixed;
+      top: 14px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 1000;
+      background: rgba(252, 248, 240, 0.96);
+      border: 1px solid #b8a88a;
+      border-radius: 4px;
+      padding: 10px 16px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+      white-space: nowrap;
+    }
+
+    #controls h1 {
+      font-size: 14px;
+      font-weight: normal;
+      letter-spacing: 0.06em;
+      color: #3a2e1e;
+      text-transform: uppercase;
+      border-right: 1px solid #b8a88a;
+      padding-right: 14px;
+    }
+
+    #search-box {
+      font-family: Georgia, serif;
+      font-size: 13px;
+      border: 1px solid #b8a88a;
+      border-radius: 3px;
+      padding: 5px 10px;
+      background: #fff;
+      color: #3a2e1e;
+      width: 230px;
+    }
+    #search-box:focus { outline: none; border-color: #7a6040; box-shadow: 0 0 0 2px rgba(120,96,64,0.15); }
+    #search-box::placeholder { color: #9a8a70; }
+
+    #match-count {
+      font-size: 12px;
+      color: #7a6040;
+      min-width: 110px;
+    }
+
+    .toggle-label {
+      font-size: 12px;
+      color: #3a2e1e;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      cursor: pointer;
+      user-select: none;
+    }
+    .toggle-label input { cursor: pointer; }
+
+    .legend {
+      background: rgba(252, 248, 240, 0.96);
+      border: 1px solid #b8a88a;
+      padding: 12px 14px;
+      border-radius: 4px;
+      font-family: Georgia, serif;
+      font-size: 12px;
+      color: #3a2e1e;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+      line-height: 1.6;
+    }
+    .legend h4 {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      color: #7a6040;
+      margin-bottom: 6px;
+      font-weight: normal;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      margin-bottom: 3px;
+    }
+    .swatch {
+      display: inline-block;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      border: 1px solid rgba(255,255,255,0.6);
+    }
+    .legend-sizes {
+      display: flex;
+      align-items: flex-end;
+      gap: 10px;
+      margin-top: 4px;
+    }
+    .legend-size-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 3px;
+      font-size: 10px;
+      color: #7a6040;
+    }
+
+    .leaflet-popup-content {
+      font-family: Georgia, 'Times New Roman', serif;
+      font-size: 13px;
+      line-height: 1.55;
+      color: #2a1e0e;
+      max-height: 320px;
+      overflow-y: auto;
+      padding-right: 4px;
+    }
+    .popup-source {
+      font-size: 10px;
+      font-weight: bold;
+      letter-spacing: 0.06em;
+      color: #7a6040;
+      text-transform: uppercase;
+      margin-bottom: 7px;
+    }
+    .popup h3 {
+      font-size: 14px;
+      font-weight: bold;
+      margin-bottom: 7px;
+      color: #1a0e00;
+    }
+    .popup p { margin-bottom: 4px; }
+    .popup strong { color: #5a4020; }
+    .popup em { color: #5a5040; font-style: italic; }
+  </style>
+</head>
+<body>
+
+<div id="controls">
+  <h1>Church Slavery Atlas</h1>
+  <input id="search-box" type="text" placeholder="Search country, note, reference…" autocomplete="off" />
+  <span id="match-count"></span>
+  <label class="toggle-label">
+    <input type="checkbox" id="toggle-world" checked /> World Dataset
+  </label>
+  <label class="toggle-label">
+    <input type="checkbox" id="toggle-french" checked /> French Clergy
+  </label>
+</div>
+
+<div id="map"></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<script>
+  const EMPIRE_COLORS = {
+    'British/U.S.': '#CC0000',
+    'French':       '#0055CC',
+    'Spanish':      '#CCAA00',
+    'Portuguese':   '#1a6600',
+  };
+  const DEFAULT_COLOR = '#888888';
+  const MIN_RADIUS = 5;
+  const MAX_RADIUS = 40;
+  const GLOBAL_MAX = 7000;
+
+  function calcRadius(count) {
+    const n = parseFloat(count);
+    if (!n || n <= 0) return MIN_RADIUS;
+    return MIN_RADIUS + (Math.sqrt(n) / Math.sqrt(GLOBAL_MAX)) * (MAX_RADIUS - MIN_RADIUS);
+  }
+
+  const map = L.map('map', { zoomControl: true }).setView([15, -20], 3);
+
+  L.tileLayer(
+    'https://server.arcgisonline.com/ArcGIS/rest/services/World_Physical_Map/MapServer/tile/{z}/{y}/{x}',
+    {
+      attribution: 'Tiles &copy; Esri &mdash; Source: US National Park Service',
+      maxZoom: 10,
+    }
+  ).addTo(map);
+
+  const legend = L.control({ position: 'bottomright' });
+  legend.onAdd = function () {
+    const div = L.DomUtil.create('div', 'legend');
+    const empireRows = Object.entries(EMPIRE_COLORS).map(([name, color]) =>
+      `<div class="legend-item">
+        <span class="swatch" style="background:${color}"></span>${name}
+      </div>`
+    ).join('');
+
+    const sizeSamples = [[1, calcRadius(1)], [100, calcRadius(100)], [574, calcRadius(574)], [7000, calcRadius(7000)]];
+    const sizeItems = sizeSamples.map(([count, r]) => {
+      const d = r * 2 + 2;
+      return `<div class="legend-size-item">
+        <svg width="${d}" height="${d}" viewBox="0 0 ${d} ${d}">
+          <circle cx="${r+1}" cy="${r+1}" r="${r}" fill="#888" fill-opacity="0.6" stroke="#fff" stroke-width="1"/>
+        </svg>
+        <span>${count.toLocaleString()}</span>
+      </div>`;
+    }).join('');
+
+    div.innerHTML = `
+      <h4>Empire</h4>
+      ${empireRows}
+      <h4 style="margin-top:10px">Enslaved Persons</h4>
+      <div class="legend-sizes">${sizeItems}</div>
+    `;
+    return div;
+  };
+  legend.addTo(map);
+
+  let allPoints = [];
+  const markersLayer = L.layerGroup().addTo(map);
+
+  function normalizeFile1(row) {
+    const lat = parseFloat(row.lat);
+    const lon = parseFloat(row.lon);
+    if (isNaN(lat) || isNaN(lon)) return null;
+    return {
+      source: 'World Dataset',
+      community: row['Community'] || '',
+      community2: row['Community2'] || '',
+      location: [row['Location'], row['Location2']].filter(Boolean).join(', '),
+      site: '',
+      country: row['Country'] || '',
+      empire: (row['Empire'] || '').trim(),
+      year: row['Approximate Year of Data'] || '',
+      count: row['Volume'],
+      countLabel: row['Total Enslaved Persons'] || row['Volume'] || '',
+      reference: row['Reference'] || '',
+      note: row['Note'] || '',
+      lat, lon,
+    };
+  }
+
+  function normalizeFile2(row) {
+    const lat = parseFloat(row.lat);
+    const lon = parseFloat(row.lon);
+    if (isNaN(lat) || isNaN(lon)) return null;
+    return {
+      source: 'French Clergy Dataset',
+      community: row['Community'] || '',
+      community2: row['Religieux-Religieuses'] || '',
+      location: row['Province'] || '',
+      site: [row['Site'], row['Site-2']].filter(Boolean).join(', '),
+      country: row['Country'] || '',
+      empire: (row['Empire'] || '').trim(),
+      year: row['Approximate Year of Data'] || '',
+      count: row['Number-Approx'],
+      countLabel: row['Total Enslaved Persons'] || row['Number-Approx'] || '',
+      reference: row['Reference'] || '',
+      note: row['Note'] || '',
+      lat, lon,
+    };
+  }
+
+  function buildPopup(p) {
+    const displayName = p.community2 && p.community2 !== p.community
+      ? `${p.community} <span style="font-weight:normal;color:#666">(${p.community2})</span>`
+      : p.community;
+    return `
+      <div class="popup">
+        <div class="popup-source">${p.source}</div>
+        <h3>${displayName}</h3>
+        ${p.site ? `<p><strong>Site:</strong> ${p.site}</p>` : ''}
+        ${p.location ? `<p><strong>Location:</strong> ${p.location}</p>` : ''}
+        <p><strong>Country:</strong> ${p.country}</p>
+        <p><strong>Empire:</strong> ${p.empire}</p>
+        ${p.year ? `<p><strong>Approx. Year:</strong> ${p.year}</p>` : ''}
+        <p><strong>Enslaved Persons:</strong> ${p.countLabel}</p>
+        ${p.reference ? `<p><strong>Reference:</strong> <em>${p.reference}</em></p>` : ''}
+        ${p.note ? `<p><strong>Note:</strong> ${p.note}</p>` : ''}
+      </div>
+    `;
+  }
+
+  function renderPoints(points) {
+    markersLayer.clearLayers();
+    points.forEach(p => {
+      const color = EMPIRE_COLORS[p.empire] || DEFAULT_COLOR;
+      const radius = calcRadius(p.count);
+      const circle = L.circleMarker([p.lat, p.lon], {
+        radius,
+        fillColor: color,
+        color: 'rgba(255,255,255,0.7)',
+        weight: 1.2,
+        fillOpacity: 0.78,
+      });
+      circle.bindPopup(buildPopup(p), { maxWidth: 340 });
+      markersLayer.addLayer(circle);
+    });
+  }
+
+  function applyFilters() {
+    const query = document.getElementById('search-box').value.trim().toLowerCase();
+    const showWorld = document.getElementById('toggle-world').checked;
+    const showFrench = document.getElementById('toggle-french').checked;
+
+    const filtered = allPoints.filter(p => {
+      if (p.source === 'World Dataset' && !showWorld) return false;
+      if (p.source === 'French Clergy Dataset' && !showFrench) return false;
+      if (!query) return true;
+      return (
+        p.country.toLowerCase().includes(query) ||
+        p.note.toLowerCase().includes(query) ||
+        p.reference.toLowerCase().includes(query) ||
+        p.community.toLowerCase().includes(query) ||
+        p.location.toLowerCase().includes(query) ||
+        p.site.toLowerCase().includes(query)
+      );
+    });
+
+    renderPoints(filtered);
+    document.getElementById('match-count').textContent =
+      `${filtered.length} location${filtered.length !== 1 ? 's' : ''} shown`;
+  }
+
+  async function fetchCSV(path) {
+    const response = await fetch(path);
+    const text = await response.text();
+    return Papa.parse(text, { header: true, skipEmptyLines: true });
+  }
+
+  async function loadData() {
+    document.getElementById('match-count').textContent = 'Loading…';
+    try {
+      const [r1, r2] = await Promise.all([
+        fetchCSV('world_eccl.csv'),
+        fetchCSV('french_clergy.csv'),
+      ]);
+      allPoints = [
+        ...r1.data.map(normalizeFile1),
+        ...r2.data.map(normalizeFile2),
+      ].filter(p => p !== null);
+      applyFilters();
+    } catch (err) {
+      document.getElementById('match-count').textContent = 'Error loading data';
+      console.error(err);
+    }
+  }
+
+  document.getElementById('search-box').addEventListener('input', applyFilters);
+  document.getElementById('toggle-world').addEventListener('change', applyFilters);
+  document.getElementById('toggle-french').addEventListener('change', applyFilters);
+
+  loadData();
+</script>
+</body>
+</html>
