@@ -45,7 +45,7 @@
       padding: 5px 10px;
       background: #fff;
       color: #3a2e1e;
-      width: 230px;
+      width: 200px;
     }
     #search-box:focus { outline: none; border-color: #7a6040; box-shadow: 0 0 0 2px rgba(120,96,64,0.15); }
     #search-box::placeholder { color: #9a8a70; }
@@ -66,6 +66,80 @@
       user-select: none;
     }
     .toggle-label input { cursor: pointer; }
+
+    /* Timeline range slider */
+    #timeline-wrap {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border-left: 1px solid #b8a88a;
+      padding-left: 14px;
+    }
+    #timeline-label {
+      font-size: 12px;
+      color: #7a6040;
+      white-space: nowrap;
+    }
+    #year-display {
+      font-size: 12px;
+      color: #3a2e1e;
+      min-width: 80px;
+      text-align: center;
+    }
+    .range-slider {
+      position: relative;
+      width: 160px;
+      height: 20px;
+    }
+    .range-slider input[type=range] {
+      position: absolute;
+      width: 100%;
+      height: 4px;
+      top: 50%;
+      transform: translateY(-50%);
+      appearance: none;
+      -webkit-appearance: none;
+      background: transparent;
+      pointer-events: none;
+    }
+    .range-slider input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      pointer-events: all;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: #7a6040;
+      border: 2px solid #fff;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+      cursor: pointer;
+    }
+    .range-slider input[type=range]::-moz-range-thumb {
+      pointer-events: all;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: #7a6040;
+      border: 2px solid #fff;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+      cursor: pointer;
+    }
+    .range-track {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 100%;
+      height: 4px;
+      background: #d8c8b0;
+      border-radius: 2px;
+    }
+    .range-fill {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      height: 4px;
+      background: #7a6040;
+      border-radius: 2px;
+    }
 
     .legend {
       background: rgba(252, 248, 240, 0.96);
@@ -155,6 +229,17 @@
   <label class="toggle-label">
     <input type="checkbox" id="toggle-french" checked /> French Clergy
   </label>
+
+  <div id="timeline-wrap">
+    <span id="timeline-label">year</span>
+    <div class="range-slider" id="range-slider">
+      <div class="range-track"></div>
+      <div class="range-fill" id="range-fill"></div>
+      <input type="range" id="year-min" min="1600" max="1820" value="1600" step="1" />
+      <input type="range" id="year-max" min="1600" max="1820" value="1820" step="1" />
+    </div>
+    <span id="year-display">1600 – 1820</span>
+  </div>
 </div>
 
 <div id="map"></div>
@@ -172,11 +257,19 @@
   const MIN_RADIUS = 5;
   const MAX_RADIUS = 40;
   const GLOBAL_MAX = 7000;
+  const YEAR_MIN = 1600;
+  const YEAR_MAX = 1820;
 
   function calcRadius(count) {
     const n = parseFloat(count);
     if (!n || n <= 0) return MIN_RADIUS;
     return MIN_RADIUS + (Math.sqrt(n) / Math.sqrt(GLOBAL_MAX)) * (MAX_RADIUS - MIN_RADIUS);
+  }
+
+  function parseYear(str) {
+    if (!str) return null;
+    const m = String(str).match(/\d{4}/);
+    return m ? parseInt(m[0]) : null;
   }
 
   const map = L.map('map', { zoomControl: true }).setView([15, -20], 3);
@@ -226,6 +319,7 @@
     const lat = parseFloat(row.lat);
     const lon = parseFloat(row.lon);
     if (isNaN(lat) || isNaN(lon)) return null;
+    const yearStr = row['Approximate Year of Data'] || '';
     return {
       source: 'World Dataset',
       community: row['Community'] || '',
@@ -234,7 +328,8 @@
       site: '',
       country: row['Country'] || '',
       empire: (row['Empire'] || '').trim(),
-      year: row['Approximate Year of Data'] || '',
+      year: yearStr,
+      yearNum: parseYear(yearStr),
       count: row['Volume'],
       countLabel: row['Total Enslaved Persons'] || row['Volume'] || '',
       reference: row['Reference'] || '',
@@ -247,6 +342,7 @@
     const lat = parseFloat(row.lat);
     const lon = parseFloat(row.lon);
     if (isNaN(lat) || isNaN(lon)) return null;
+    const yearStr = row['Approximate Year of Data'] || '';
     return {
       source: 'French Clergy Dataset',
       community: row['Community'] || '',
@@ -255,7 +351,8 @@
       site: [row['Site'], row['Site-2']].filter(Boolean).join(', '),
       country: row['Country'] || '',
       empire: (row['Empire'] || '').trim(),
-      year: row['Approximate Year of Data'] || '',
+      year: yearStr,
+      yearNum: parseYear(yearStr),
       count: row['Number-Approx'],
       countLabel: row['Total Enslaved Persons'] || row['Number-Approx'] || '',
       reference: row['Reference'] || '',
@@ -305,10 +402,13 @@
     const query = document.getElementById('search-box').value.trim().toLowerCase();
     const showWorld = document.getElementById('toggle-world').checked;
     const showFrench = document.getElementById('toggle-french').checked;
+    const yMin = parseInt(document.getElementById('year-min').value);
+    const yMax = parseInt(document.getElementById('year-max').value);
 
     const filtered = allPoints.filter(p => {
       if (p.source === 'World Dataset' && !showWorld) return false;
       if (p.source === 'French Clergy Dataset' && !showFrench) return false;
+      if (p.yearNum !== null && (p.yearNum < yMin || p.yearNum > yMax)) return false;
       if (!query) return true;
       return (
         p.country.toLowerCase().includes(query) ||
@@ -324,6 +424,27 @@
     document.getElementById('match-count').textContent =
       `${filtered.length} location${filtered.length !== 1 ? 's' : ''} shown`;
   }
+
+  // Dual range slider logic
+  const sliderMin = document.getElementById('year-min');
+  const sliderMax = document.getElementById('year-max');
+  const rangeFill = document.getElementById('range-fill');
+  const yearDisplay = document.getElementById('year-display');
+
+  function updateSlider() {
+    let lo = parseInt(sliderMin.value);
+    let hi = parseInt(sliderMax.value);
+    if (lo > hi) { [lo, hi] = [hi, lo]; }
+    const pct = (v) => ((v - YEAR_MIN) / (YEAR_MAX - YEAR_MIN)) * 100;
+    rangeFill.style.left = pct(lo) + '%';
+    rangeFill.style.width = (pct(hi) - pct(lo)) + '%';
+    yearDisplay.textContent = `${lo} – ${hi}`;
+    applyFilters();
+  }
+
+  sliderMin.addEventListener('input', updateSlider);
+  sliderMax.addEventListener('input', updateSlider);
+  updateSlider();
 
   async function fetchCSV(path) {
     const response = await fetch(path);
