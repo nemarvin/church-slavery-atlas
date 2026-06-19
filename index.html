@@ -165,7 +165,7 @@
   const EMPIRE_COLORS = {
     'British/U.S.': '#8B0000',
     'French':       '#003399',
-    'Spanish':      '#8B7200',
+    'Spanish':      '#A68C00',
     'Portuguese':   '#1a6600',
   };
   const DEFAULT_COLOR = '#888888';
@@ -182,10 +182,10 @@
   const map = L.map('map', { zoomControl: true }).setView([15, -20], 3);
 
   L.tileLayer(
-    'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}',
+    'https://server.arcgisonline.com/ArcGIS/rest/services/World_Shaded_Relief/MapServer/tile/{z}/{y}/{x}',
     {
-      attribution: 'Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ',
-      maxZoom: 16,
+      attribution: 'Tiles &copy; Esri &mdash; Source: Esri',
+      maxZoom: 13,
     }
   ).addTo(map);
 
