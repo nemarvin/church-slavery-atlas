@@ -390,10 +390,11 @@
     const displayName = p.community2 && p.community2 !== p.community
       ? `${name1} <span style="font-weight:normal;color:#666">(${hl(p.community2)})</span>`
       : name1;
+    const wikiUrl = `https://en.wikipedia.org/wiki/Special:Search?search=${encodeURIComponent(p.community)}`;
     return `
       <div class="popup">
         <div class="popup-source">${p.source}</div>
-        <h3>${displayName}</h3>
+        <h3><a href="${wikiUrl}" target="_blank" rel="noopener" style="color:inherit;text-decoration:underline;text-decoration-color:#b8a88a;">${displayName}</a></h3>
         ${p.site ? `<p><strong>Site:</strong> ${hl(p.site)}</p>` : ''}
         ${p.location ? `<p><strong>Location:</strong> ${hl(p.location)}</p>` : ''}
         <p><strong>Country:</strong> ${hl(p.country)}</p>
