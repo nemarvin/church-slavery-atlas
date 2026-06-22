@@ -271,6 +271,7 @@
     maxBounds: WORLD_BOUNDS,
     maxBoundsViscosity: 1.0,
   }).setView([15, -20], 3);
+  map.attributionControl.setPrefix('<a href="https://leafletjs.com" title="A JavaScript library for interactive maps">Leaflet</a>');
 
   function updateMinZoom() {
     // At zoom Z the world is 256×2^Z px wide; we need that ≥ viewport width
