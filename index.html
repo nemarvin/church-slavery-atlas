@@ -424,17 +424,6 @@
 
       marker.on('mouseover', function() {
         clearTimeout(_hoverCloseTimer);
-        const markerPt = map.latLngToContainerPoint(this.getLatLng());
-        const mapRect = map.getContainer().getBoundingClientRect();
-        const ctrlBottom = document.getElementById('controls').getBoundingClientRect().bottom - mapRect.top;
-        const r = calcRadius(p.count);
-        const POPUP_H = 220;
-        const popup = this.getPopup();
-        const flipped = (markerPt.y - r) < ctrlBottom + POPUP_H + 8;
-        popup._flipped = flipped;
-        popup.options.offset = flipped
-          ? L.point(0, r + POPUP_H + 10)
-          : L.point(0, -r);
         this.openPopup();
       });
 
@@ -449,22 +438,46 @@
         if (!el) return;
         const m = this;
 
-        el.addEventListener('mouseenter', () => clearTimeout(_hoverCloseTimer));
-        el.addEventListener('mouseleave', () => {
-          _hoverCloseTimer = setTimeout(() => m.closePopup(), 180);
-        });
+        // Hide immediately — browser won't paint until JS yields, so no flash
+        el.style.visibility = 'hidden';
 
-        if (popup._flipped) {
-          const tip = el.querySelector('.leaflet-popup-tip-container');
+        // Remove previous listeners before re-adding to prevent accumulation
+        if (popup._enterHandler) el.removeEventListener('mouseenter', popup._enterHandler);
+        if (popup._leaveHandler) el.removeEventListener('mouseleave', popup._leaveHandler);
+        popup._enterHandler = () => clearTimeout(_hoverCloseTimer);
+        popup._leaveHandler = () => { _hoverCloseTimer = setTimeout(() => m.closePopup(), 180); };
+        el.addEventListener('mouseenter', popup._enterHandler);
+        el.addEventListener('mouseleave', popup._leaveHandler);
+
+        // Reset only the specific properties we may have set previously
+        const tip = el.querySelector('.leaflet-popup-tip-container');
+        const wrapper = el.querySelector('.leaflet-popup-content-wrapper');
+        if (tip) { tip.style.position = ''; tip.style.top = ''; tip.style.marginTop = ''; tip.style.transform = ''; }
+        if (wrapper) { wrapper.style.marginTop = ''; }
+
+        const markerPt = map.latLngToContainerPoint(m.getLatLng());
+        const mapRect = map.getContainer().getBoundingClientRect();
+        const ctrlBottom = document.getElementById('controls').getBoundingClientRect().bottom - mapRect.top;
+        const r = calcRadius(p.count);
+        const popupH = el.offsetHeight;
+        const flipped = (markerPt.y - r - popupH - 10) < ctrlBottom + 8;
+
+        if (flipped) {
+          popup.options.offset = L.point(0, r + popupH + 17 + 10);
+          popup.update();
           if (tip) {
             tip.style.position = 'absolute';
             tip.style.top = '0';
             tip.style.marginTop = '0';
             tip.style.transform = 'rotate(180deg)';
           }
-          const wrapper = el.querySelector('.leaflet-popup-content-wrapper');
           if (wrapper) wrapper.style.marginTop = '17px';
+        } else {
+          popup.options.offset = L.point(0, -r);
+          popup.update();
         }
+
+        el.style.visibility = '';
       });
 
       markersLayer.addLayer(marker);
