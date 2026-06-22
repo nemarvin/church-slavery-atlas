@@ -385,17 +385,42 @@
     return String(text).replace(new RegExp(`(${escaped})`, 'gi'), '<mark>$1</mark>');
   }
 
+  const WIKI_URLS = {
+    'Augustinian Hospitallers':            'https://en.wikipedia.org/wiki/Canonesses_of_St._Augustine_of_the_Mercy_of_Jesus',
+    'Augustinians':                        'https://en.wikipedia.org/wiki/Augustinians',
+    'Benedictines':                        'https://en.wikipedia.org/wiki/Benedictines',
+    'Brothers Hospitallers':               'https://en.wikipedia.org/wiki/Hospitaller_Order_of_Saint_John_of_God',
+    'Capuchins':                           'https://en.wikipedia.org/wiki/Capuchin_Franciscans',
+    'Carmelites':                          'https://en.wikipedia.org/wiki/Carmelites',
+    'Christian Brothers':                  'https://en.wikipedia.org/wiki/De_La_Salle_Brothers',
+    'Company of Mary Our Lady':            'https://en.wikipedia.org/wiki/Sisters_of_the_Company_of_Mary%2C_Our_Lady',
+    'Congregation of Notre Dame':          'https://en.wikipedia.org/wiki/Congregation_of_Notre_Dame',
+    'Dominicans':                          'https://en.wikipedia.org/wiki/Dominican_Order',
+    'Grey Nuns':                           'https://en.wikipedia.org/wiki/Grey_Nuns',
+    'Jesuits':                             'https://en.wikipedia.org/wiki/Society_of_Jesus',
+    'Lazarists':                           'https://en.wikipedia.org/wiki/Congregation_of_the_Mission',
+    'Recollects':                          'https://en.wikipedia.org/wiki/Recollects',
+    'Religious Hospitallers of Saint Joseph': 'https://en.wikipedia.org/wiki/Religious_Hospitallers_of_Saint_Joseph',
+    'Religious of the Sacred Heart of Jesus': 'https://en.wikipedia.org/wiki/Society_of_the_Sacred_Heart',
+    'Seminary of Quebec':                  'https://en.wikipedia.org/wiki/S%C3%A9minaire_de_Qu%C3%A9bec',
+    'Sisters of Charity of St. Joseph':    'https://en.wikipedia.org/wiki/Sisters_of_Charity',
+    'Sisters of Loretto':                  'https://en.wikipedia.org/wiki/Sisters_of_Loretto',
+    'Spiritans':                           'https://en.wikipedia.org/wiki/Congregation_of_the_Holy_Spirit',
+    'Sulpicians':                          'https://en.wikipedia.org/wiki/Society_of_Saint-Sulpice',
+    'Ursulines':                           'https://en.wikipedia.org/wiki/Ursulines',
+  };
+
   function buildPopup(p, query) {
     const hl = text => highlight(text, query);
     const name1 = hl(p.community);
     const displayName = p.community2 && p.community2 !== p.community
       ? `${name1} <span style="font-weight:normal;color:#666">(${hl(p.community2)})</span>`
       : name1;
-    const wikiUrl = `https://en.wikipedia.org/wiki/Special:Search?search=${encodeURIComponent(p.community)}`;
+    const wikiUrl = WIKI_URLS[p.community];
     return `
       <div class="popup">
         <div class="popup-source">${p.source}</div>
-        <h3><a href="${wikiUrl}" target="_blank" rel="noopener" style="color:inherit;text-decoration:underline;text-decoration-color:#b8a88a;">${displayName}</a></h3>
+        <h3>${wikiUrl ? `<a href="${wikiUrl}" target="_blank" rel="noopener" style="color:inherit;text-decoration:underline;text-decoration-color:#b8a88a;">${displayName}</a>` : displayName}</h3>
         ${p.site ? `<p><strong>Site:</strong> ${hl(p.site)}</p>` : ''}
         ${p.location ? `<p><strong>Location:</strong> ${hl(p.location)}</p>` : ''}
         <p><strong>Country:</strong> ${hl(p.country)}</p>
