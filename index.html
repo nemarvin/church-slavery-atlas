@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Church Slavery Atlas</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     html, body { height: 100%; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; }
@@ -27,16 +29,6 @@
       white-space: nowrap;
     }
 
-    #controls h1 {
-      font-size: 14px;
-      font-weight: normal;
-      letter-spacing: 0.06em;
-      color: #3a2e1e;
-      text-transform: lowercase;
-      border-right: 1px solid #b8a88a;
-      padding-right: 14px;
-    }
-
     #search-box {
       font-family: inherit;
       font-size: 13px;
@@ -50,10 +42,21 @@
     #search-box:focus { outline: none; border-color: #7a6040; box-shadow: 0 0 0 2px rgba(120,96,64,0.15); }
     #search-box::placeholder { color: #9a8a70; }
 
+    #search-wrap {
+      position: relative;
+    }
+
     #match-count {
-      font-size: 12px;
+      position: absolute;
+      top: calc(100% + 5px);
+      left: 0;
+      font-size: 11px;
       color: #7a6040;
-      min-width: 110px;
+      white-space: nowrap;
+      background: rgba(252, 248, 240, 0.92);
+      padding: 1px 6px;
+      border-radius: 3px;
+      pointer-events: none;
     }
 
     .toggle-label {
@@ -67,11 +70,11 @@
     }
     .toggle-label input { cursor: pointer; }
 
-    /* Timeline range slider */
+    /* Year range inputs */
     #timeline-wrap {
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 6px;
       border-left: 1px solid #b8a88a;
       padding-left: 14px;
     }
@@ -80,65 +83,22 @@
       color: #7a6040;
       white-space: nowrap;
     }
-    #year-display {
-      font-size: 12px;
+    .year-input {
+      font-family: inherit;
+      font-size: 13px;
+      border: 1px solid #b8a88a;
+      border-radius: 3px;
+      padding: 4px 7px;
+      background: #fff;
       color: #3a2e1e;
-      min-width: 80px;
+      width: 62px;
       text-align: center;
     }
-    .range-slider {
-      position: relative;
-      width: 160px;
-      height: 20px;
-    }
-    .range-slider input[type=range] {
-      position: absolute;
-      width: 100%;
-      height: 4px;
-      top: 50%;
-      transform: translateY(-50%);
-      appearance: none;
-      -webkit-appearance: none;
-      background: transparent;
-      pointer-events: none;
-    }
-    .range-slider input[type=range]::-webkit-slider-thumb {
-      -webkit-appearance: none;
-      pointer-events: all;
-      width: 14px;
-      height: 14px;
-      border-radius: 50%;
-      background: #7a6040;
-      border: 2px solid #fff;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.3);
-      cursor: pointer;
-    }
-    .range-slider input[type=range]::-moz-range-thumb {
-      pointer-events: all;
-      width: 14px;
-      height: 14px;
-      border-radius: 50%;
-      background: #7a6040;
-      border: 2px solid #fff;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.3);
-      cursor: pointer;
-    }
-    .range-track {
-      position: absolute;
-      top: 50%;
-      transform: translateY(-50%);
-      width: 100%;
-      height: 4px;
-      background: #d8c8b0;
-      border-radius: 2px;
-    }
-    .range-fill {
-      position: absolute;
-      top: 50%;
-      transform: translateY(-50%);
-      height: 4px;
-      background: #7a6040;
-      border-radius: 2px;
+    .year-input:focus { outline: none; border-color: #7a6040; box-shadow: 0 0 0 2px rgba(120,96,64,0.15); }
+    .year-input.invalid { border-color: #cc2200; box-shadow: 0 0 0 2px rgba(204,34,0,0.15); }
+    #year-sep {
+      font-size: 12px;
+      color: #7a6040;
     }
 
     .legend {
@@ -174,27 +134,12 @@
       flex-shrink: 0;
       border: 1px solid rgba(255,255,255,0.6);
     }
-    .legend-sizes {
-      display: flex;
-      align-items: flex-end;
-      gap: 10px;
-      margin-top: 4px;
-    }
-    .legend-size-item {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 3px;
-      font-size: 10px;
-      color: #7a6040;
-    }
-
-    .leaflet-popup-content {
+.leaflet-popup-content {
       font-family: inherit;
-      font-size: 13px;
-      line-height: 1.55;
+      font-size: 12px;
+      line-height: 1.4;
       color: #2a1e0e;
-      max-height: 320px;
+      max-height: 260px;
       overflow-y: auto;
       padding-right: 4px;
     }
@@ -204,47 +149,81 @@
       letter-spacing: 0.06em;
       color: #7a6040;
       text-transform: lowercase;
-      margin-bottom: 7px;
+      margin-bottom: 3px;
     }
     .popup h3 {
-      font-size: 14px;
+      font-size: 13px;
       font-weight: bold;
-      margin-bottom: 7px;
+      margin-bottom: 3px;
       color: #1a0e00;
     }
-    .popup p { margin-bottom: 4px; }
+    .popup p { margin: 0 0 1px; }
     .popup strong { color: #5a4020; }
     .popup em { color: #5a5040; font-style: italic; }
+    .popup mark { background: #f5d97a; color: inherit; border-radius: 2px; padding: 0 1px; }
+
+
+    .point-marker-icon { background: none !important; border: none !important; }
+
+    #reset-zoom {
+      font-family: inherit;
+      font-size: 12px;
+      color: #7a6040;
+      background: none;
+      border: 1px solid #b8a88a;
+      border-radius: 3px;
+      padding: 4px 9px;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    #reset-zoom:hover { background: rgba(184,168,138,0.15); color: #3a2e1e; }
+
+    .marker-cluster-atlas {
+      background: rgba(252, 248, 240, 0.9);
+      border: 2px solid #b8a88a;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+      font-size: 12px;
+      font-weight: bold;
+      color: #3a2e1e;
+      cursor: pointer;
+    }
   </style>
 </head>
 <body>
 
 <div id="controls">
-  <h1>Church Slavery Atlas</h1>
-  <input id="search-box" type="text" placeholder="Search country, note, reference…" autocomplete="off" />
-  <span id="match-count"></span>
+  <div id="search-wrap">
+    <input id="search-box" type="text" placeholder="Search country, note, reference…" autocomplete="off" />
+    <span id="match-count"></span>
+  </div>
   <label class="toggle-label">
     <input type="checkbox" id="toggle-world" /> World Dataset
   </label>
   <label class="toggle-label">
     <input type="checkbox" id="toggle-french" checked /> French Clergy
   </label>
+  <label class="toggle-label">
+    <input type="checkbox" id="toggle-borders" checked /> Map labels (modern)
+  </label>
+
+  <button id="reset-zoom">Reset zoom</button>
 
   <div id="timeline-wrap">
     <span id="timeline-label">year</span>
-    <div class="range-slider" id="range-slider">
-      <div class="range-track"></div>
-      <div class="range-fill" id="range-fill"></div>
-      <input type="range" id="year-min" min="1600" max="1820" value="1600" step="1" />
-      <input type="range" id="year-max" min="1600" max="1820" value="1820" step="1" />
-    </div>
-    <span id="year-display">1600 – 1820</span>
+    <input type="number" id="year-min" class="year-input" value="1600" placeholder="from" />
+    <span id="year-sep">–</span>
+    <input type="number" id="year-max" class="year-input" value="1820" placeholder="to" />
   </div>
 </div>
 
 <div id="map"></div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 <script>
   const EMPIRE_COLORS = {
@@ -254,7 +233,7 @@
     'Portuguese':   '#1a6600',
   };
   const DEFAULT_COLOR = '#888888';
-  const MIN_RADIUS = 5;
+  const MIN_RADIUS = 8;
   const MAX_RADIUS = 40;
   const GLOBAL_MAX = 7000;
   const YEAR_MIN = 1600;
@@ -272,15 +251,45 @@
     return m ? parseInt(m[0]) : null;
   }
 
-  const map = L.map('map', { zoomControl: true }).setView([15, -20], 3);
+  const WORLD_BOUNDS = L.latLngBounds([[-90, -180], [90, 180]]);
+
+  const map = L.map('map', {
+    zoomControl: true,
+    maxBounds: WORLD_BOUNDS,
+    maxBoundsViscosity: 1.0,
+  }).setView([15, -20], 3);
+
+  function updateMinZoom() {
+    // At zoom Z the world is 256×2^Z px wide; we need that ≥ viewport width
+    // so minZoom = ceil(log2(viewportWidth / 256)).
+    // e.g. 1440px → ceil(2.49) = 3, 2560px → ceil(3.32) = 4
+    const minZoom = Math.ceil(Math.log2(map.getSize().x / 256));
+    map.setMinZoom(minZoom);
+  }
+  map.on('resize', updateMinZoom);
+  updateMinZoom();
 
   L.tileLayer(
     'https://server.arcgisonline.com/ArcGIS/rest/services/World_Shaded_Relief/MapServer/tile/{z}/{y}/{x}',
     {
       attribution: 'Tiles &copy; Esri &mdash; Source: Esri',
       maxZoom: 13,
+      noWrap: true,
     }
   ).addTo(map);
+
+  const bordersLayer = L.tileLayer(
+    'https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png',
+    { attribution: '&copy; <a href="https://carto.com">CARTO</a>', subdomains: 'abcd', noWrap: true, tileSize: 512, zoomOffset: -1 }
+  ).addTo(map);
+
+  document.getElementById('toggle-borders').addEventListener('change', function () {
+    if (this.checked) {
+      bordersLayer.addTo(map);
+    } else {
+      bordersLayer.remove();
+    }
+  });
 
   const legend = L.control({ position: 'bottomright' });
   legend.onAdd = function () {
@@ -291,29 +300,30 @@
       </div>`
     ).join('');
 
-    const sizeSamples = [[1, calcRadius(1)], [100, calcRadius(100)], [574, calcRadius(574)], [7000, calcRadius(7000)]];
-    const sizeItems = sizeSamples.map(([count, r]) => {
-      const d = r * 2 + 2;
-      return `<div class="legend-size-item">
-        <svg width="${d}" height="${d}" viewBox="0 0 ${d} ${d}">
-          <circle cx="${r+1}" cy="${r+1}" r="${r}" fill="#888" fill-opacity="0.6" stroke="#fff" stroke-width="1"/>
-        </svg>
-        <span>${count.toLocaleString()}</span>
-      </div>`;
-    }).join('');
-
     div.innerHTML = `
       <h4>Empire</h4>
       ${empireRows}
-      <h4 style="margin-top:10px">Enslaved Persons</h4>
-      <div class="legend-sizes">${sizeItems}</div>
     `;
     return div;
   };
   legend.addTo(map);
 
   let allPoints = [];
-  const markersLayer = L.layerGroup().addTo(map);
+  const markersLayer = L.markerClusterGroup({
+    showCoverageOnHover: false,
+    zoomToBoundsOnClick: true,
+    maxClusterRadius: 20,
+    iconCreateFunction: function(cluster) {
+      const count = cluster.getChildCount();
+      const size = count < 10 ? 34 : count < 100 ? 40 : 48;
+      return L.divIcon({
+        html: `<div class="marker-cluster-atlas" style="width:${size}px;height:${size}px">${count}</div>`,
+        className: '',
+        iconSize: L.point(size, size),
+        iconAnchor: L.point(size / 2, size / 2),
+      });
+    },
+  }).addTo(map);
 
   function normalizeFile1(row) {
     const lat = parseFloat(row.lat);
@@ -361,40 +371,103 @@
     };
   }
 
-  function buildPopup(p) {
+  function highlight(text, query) {
+    if (!query || !text) return text;
+    const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    return String(text).replace(new RegExp(`(${escaped})`, 'gi'), '<mark>$1</mark>');
+  }
+
+  function buildPopup(p, query) {
+    const hl = text => highlight(text, query);
+    const name1 = hl(p.community);
     const displayName = p.community2 && p.community2 !== p.community
-      ? `${p.community} <span style="font-weight:normal;color:#666">(${p.community2})</span>`
-      : p.community;
+      ? `${name1} <span style="font-weight:normal;color:#666">(${hl(p.community2)})</span>`
+      : name1;
     return `
       <div class="popup">
         <div class="popup-source">${p.source}</div>
         <h3>${displayName}</h3>
-        ${p.site ? `<p><strong>Site:</strong> ${p.site}</p>` : ''}
-        ${p.location ? `<p><strong>Location:</strong> ${p.location}</p>` : ''}
-        <p><strong>Country:</strong> ${p.country}</p>
+        ${p.site ? `<p><strong>Site:</strong> ${hl(p.site)}</p>` : ''}
+        ${p.location ? `<p><strong>Location:</strong> ${hl(p.location)}</p>` : ''}
+        <p><strong>Country:</strong> ${hl(p.country)}</p>
         <p><strong>Empire:</strong> ${p.empire}</p>
         ${p.year ? `<p><strong>Approx. Year:</strong> ${p.year}</p>` : ''}
         <p><strong>Enslaved Persons:</strong> ${p.countLabel}</p>
-        ${p.reference ? `<p><strong>Reference:</strong> <em>${p.reference}</em></p>` : ''}
-        ${p.note ? `<p><strong>Note:</strong> ${p.note}</p>` : ''}
+        ${p.reference ? `<p><strong>Reference:</strong> <em>${hl(p.reference)}</em></p>` : ''}
+        ${p.note ? `<p><strong>Note:</strong> ${hl(p.note)}</p>` : ''}
       </div>
     `;
   }
 
-  function renderPoints(points) {
+  let _hoverCloseTimer = null;
+
+  function renderPoints(points, query) {
     markersLayer.clearLayers();
     points.forEach(p => {
       const color = EMPIRE_COLORS[p.empire] || DEFAULT_COLOR;
       const radius = calcRadius(p.count);
-      const circle = L.circleMarker([p.lat, p.lon], {
-        radius,
-        fillColor: color,
-        color: 'rgba(255,255,255,0.7)',
-        weight: 1.2,
-        fillOpacity: 0.73,
+      const size = radius * 2;
+      const icon = L.divIcon({
+        html: `<div style="width:${size}px;height:${size}px;border-radius:50%;background:${color};opacity:0.73;border:1.2px solid rgba(255,255,255,0.7);box-sizing:border-box;"></div>`,
+        className: 'point-marker-icon',
+        iconSize: [size, size],
+        iconAnchor: [radius, radius],
       });
-      circle.bindPopup(buildPopup(p), { maxWidth: 340 });
-      markersLayer.addLayer(circle);
+      const marker = L.marker([p.lat, p.lon], { icon });
+      marker.bindPopup(buildPopup(p, query), {
+        maxWidth: 300,
+        autoPan: false,
+        closeButton: false,
+        autoClose: true,
+        closeOnClick: false,
+      });
+
+      marker.on('mouseover', function() {
+        clearTimeout(_hoverCloseTimer);
+        const markerPt = map.latLngToContainerPoint(this.getLatLng());
+        const mapRect = map.getContainer().getBoundingClientRect();
+        const ctrlBottom = document.getElementById('controls').getBoundingClientRect().bottom - mapRect.top;
+        const r = calcRadius(p.count);
+        const POPUP_H = 220;
+        const popup = this.getPopup();
+        const flipped = (markerPt.y - r) < ctrlBottom + POPUP_H + 8;
+        popup._flipped = flipped;
+        popup.options.offset = flipped
+          ? L.point(0, r + POPUP_H + 10)
+          : L.point(0, -r);
+        this.openPopup();
+      });
+
+      marker.on('mouseout', function() {
+        const m = this;
+        _hoverCloseTimer = setTimeout(() => m.closePopup(), 180);
+      });
+
+      marker.on('popupopen', function() {
+        const popup = this.getPopup();
+        const el = popup.getElement();
+        if (!el) return;
+        const m = this;
+
+        el.addEventListener('mouseenter', () => clearTimeout(_hoverCloseTimer));
+        el.addEventListener('mouseleave', () => {
+          _hoverCloseTimer = setTimeout(() => m.closePopup(), 180);
+        });
+
+        if (popup._flipped) {
+          const tip = el.querySelector('.leaflet-popup-tip-container');
+          if (tip) {
+            tip.style.position = 'absolute';
+            tip.style.top = '0';
+            tip.style.marginTop = '0';
+            tip.style.transform = 'rotate(180deg)';
+          }
+          const wrapper = el.querySelector('.leaflet-popup-content-wrapper');
+          if (wrapper) wrapper.style.marginTop = '17px';
+        }
+      });
+
+      markersLayer.addLayer(marker);
     });
   }
 
@@ -404,11 +477,12 @@
     const showFrench = document.getElementById('toggle-french').checked;
     const yMin = parseInt(document.getElementById('year-min').value);
     const yMax = parseInt(document.getElementById('year-max').value);
+    const rangeValid = !isNaN(yMin) && !isNaN(yMax) && yMin <= yMax;
 
     const filtered = allPoints.filter(p => {
       if (p.source === 'World Dataset' && !showWorld) return false;
       if (p.source === 'French Clergy Dataset' && !showFrench) return false;
-      if (p.yearNum !== null && (p.yearNum < yMin || p.yearNum > yMax)) return false;
+      if (rangeValid && p.yearNum !== null && (p.yearNum < yMin || p.yearNum > yMax)) return false;
       if (!query) return true;
       return (
         p.country.toLowerCase().includes(query) ||
@@ -420,31 +494,25 @@
       );
     });
 
-    renderPoints(filtered);
+    renderPoints(filtered, query);
     document.getElementById('match-count').textContent =
-      `${filtered.length} location${filtered.length !== 1 ? 's' : ''} shown`;
+      `${filtered.length} entr${filtered.length !== 1 ? 'ies' : 'y'} shown`;
   }
 
-  // Dual range slider logic
-  const sliderMin = document.getElementById('year-min');
-  const sliderMax = document.getElementById('year-max');
-  const rangeFill = document.getElementById('range-fill');
-  const yearDisplay = document.getElementById('year-display');
+  const inputMin = document.getElementById('year-min');
+  const inputMax = document.getElementById('year-max');
 
-  function updateSlider() {
-    let lo = parseInt(sliderMin.value);
-    let hi = parseInt(sliderMax.value);
-    if (lo > hi) { [lo, hi] = [hi, lo]; }
-    const pct = (v) => ((v - YEAR_MIN) / (YEAR_MAX - YEAR_MIN)) * 100;
-    rangeFill.style.left = pct(lo) + '%';
-    rangeFill.style.width = (pct(hi) - pct(lo)) + '%';
-    yearDisplay.textContent = `${lo} – ${hi}`;
+  function updateYearInputs() {
+    const lo = parseInt(inputMin.value);
+    const hi = parseInt(inputMax.value);
+    const invalid = !isNaN(lo) && !isNaN(hi) && lo > hi;
+    inputMin.classList.toggle('invalid', invalid);
+    inputMax.classList.toggle('invalid', invalid);
     applyFilters();
   }
 
-  sliderMin.addEventListener('input', updateSlider);
-  sliderMax.addEventListener('input', updateSlider);
-  updateSlider();
+  inputMin.addEventListener('input', updateYearInputs);
+  inputMax.addEventListener('input', updateYearInputs);
 
   async function fetchCSV(path) {
     const response = await fetch(path);
@@ -473,6 +541,7 @@
   document.getElementById('search-box').addEventListener('input', applyFilters);
   document.getElementById('toggle-world').addEventListener('change', applyFilters);
   document.getElementById('toggle-french').addEventListener('change', applyFilters);
+  document.getElementById('reset-zoom').addEventListener('click', () => map.setView([15, -20], 3));
 
   loadData();
 </script>
