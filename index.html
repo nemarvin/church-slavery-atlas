@@ -178,6 +178,18 @@
     }
     #reset-zoom:hover { background: rgba(184,168,138,0.15); color: #3a2e1e; }
 
+    #basemap-select {
+      font-family: inherit;
+      font-size: 12px;
+      border: 1px solid #b8a88a;
+      border-radius: 3px;
+      padding: 4px 7px;
+      background: #fff;
+      color: #3a2e1e;
+      cursor: pointer;
+    }
+    #basemap-select:focus { outline: none; border-color: #7a6040; }
+
     .marker-cluster-atlas {
       background: rgba(252, 248, 240, 0.9);
       border: 2px solid #b8a88a;
@@ -207,8 +219,19 @@
     <input type="checkbox" id="toggle-french" checked /> French Clergy
   </label>
   <label class="toggle-label">
-    <input type="checkbox" id="toggle-borders" checked /> Map labels (modern)
+    <input type="checkbox" id="toggle-borders" checked /> Map labels
   </label>
+
+  <select id="basemap-select">
+    <option value="World_Shaded_Relief">Shaded Relief</option>
+    <option value="World_Topo_Map">Topo</option>
+    <option value="World_Physical_Map">Physical</option>
+    <option value="NatGeo_World_Map">NatGeo</option>
+    <option value="Canvas/World_Light_Gray_Base">Light Gray</option>
+    <option value="Canvas/World_Dark_Gray_Base">Dark Gray</option>
+    <option value="World_Street_Map">Streets</option>
+    <option value="World_Imagery">Satellite</option>
+  </select>
 
   <button id="reset-zoom">Reset zoom</button>
 
@@ -269,14 +292,14 @@
   map.on('resize', updateMinZoom);
   updateMinZoom();
 
-  L.tileLayer(
-    'https://server.arcgisonline.com/ArcGIS/rest/services/World_Shaded_Relief/MapServer/tile/{z}/{y}/{x}',
-    {
-      attribution: 'Tiles &copy; Esri &mdash; Source: Esri',
-      maxZoom: 13,
-      noWrap: true,
-    }
-  ).addTo(map);
+  function makeBasemap(serviceId) {
+    return L.tileLayer(
+      `https://server.arcgisonline.com/ArcGIS/rest/services/${serviceId}/MapServer/tile/{z}/{y}/{x}`,
+      { attribution: 'Tiles &copy; Esri', maxZoom: 19, noWrap: true }
+    );
+  }
+
+  let basemapLayer = makeBasemap('World_Shaded_Relief').addTo(map);
 
   const bordersLayer = L.tileLayer(
     'https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png',
@@ -555,6 +578,12 @@
   document.getElementById('toggle-world').addEventListener('change', applyFilters);
   document.getElementById('toggle-french').addEventListener('change', applyFilters);
   document.getElementById('reset-zoom').addEventListener('click', () => map.setView([15, -20], 3));
+
+  document.getElementById('basemap-select').addEventListener('change', function () {
+    map.removeLayer(basemapLayer);
+    basemapLayer = makeBasemap(this.value).addTo(map);
+    bordersLayer.bringToFront();
+  });
 
   loadData();
 </script>
