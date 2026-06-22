@@ -218,19 +218,9 @@
   <label class="toggle-label">
     <input type="checkbox" id="toggle-french" checked /> French Clergy
   </label>
-  <label class="toggle-label">
-    <input type="checkbox" id="toggle-borders" checked /> Map labels
-  </label>
-
   <select id="basemap-select">
-    <option value="World_Shaded_Relief">Shaded Relief</option>
-    <option value="World_Topo_Map">Topo</option>
-    <option value="World_Physical_Map">Physical</option>
-    <option value="NatGeo_World_Map">NatGeo</option>
-    <option value="Canvas/World_Light_Gray_Base">Light Gray</option>
-    <option value="Canvas/World_Dark_Gray_Base">Dark Gray</option>
-    <option value="World_Street_Map">Streets</option>
-    <option value="World_Imagery">Satellite</option>
+    <option value="World_Shaded_Relief">Simple map</option>
+    <option value="World_Topo_Map">Detailed map</option>
   </select>
 
   <button id="reset-zoom">Reset zoom</button>
@@ -295,7 +285,7 @@
   function makeBasemap(serviceId) {
     return L.tileLayer(
       `https://server.arcgisonline.com/ArcGIS/rest/services/${serviceId}/MapServer/tile/{z}/{y}/{x}`,
-      { attribution: 'Tiles &copy; Esri', maxZoom: 19, noWrap: true }
+      { attribution: 'Tiles &copy; Esri', maxNativeZoom: 13, maxZoom: 13, noWrap: true }
     );
   }
 
@@ -306,13 +296,7 @@
     { attribution: '&copy; <a href="https://carto.com">CARTO</a>', subdomains: 'abcd', noWrap: true, tileSize: 512, zoomOffset: -1 }
   ).addTo(map);
 
-  document.getElementById('toggle-borders').addEventListener('change', function () {
-    if (this.checked) {
-      bordersLayer.addTo(map);
-    } else {
-      bordersLayer.remove();
-    }
-  });
+
 
   const legend = L.control({ position: 'bottomright' });
   legend.onAdd = function () {
@@ -582,7 +566,11 @@
   document.getElementById('basemap-select').addEventListener('change', function () {
     map.removeLayer(basemapLayer);
     basemapLayer = makeBasemap(this.value).addTo(map);
-    bordersLayer.bringToFront();
+    if (this.value === 'World_Shaded_Relief') {
+      bordersLayer.addTo(map);
+    } else {
+      bordersLayer.remove();
+    }
   });
 
   loadData();
