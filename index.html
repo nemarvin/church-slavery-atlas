@@ -8,9 +8,10 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
   <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.5.0/dist/maplibre-gl.css" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400;1,700&display=swap" />
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    html, body { height: 100%; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; }
+    html, body { height: 100%; font-family: 'Atkinson Hyperlegible', sans-serif; }
     #map { height: 100vh; width: 100%; }
 
     #controls {
@@ -228,7 +229,7 @@
       border: 1px solid #b8a88a;
       border-radius: 4px;
       color: #3a2e1e;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+      font-family: 'Atkinson Hyperlegible', sans-serif;
       font-size: 12px;
       padding: 4px 8px;
       white-space: nowrap;
@@ -243,7 +244,7 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+      font-family: 'Atkinson Hyperlegible', sans-serif;
       font-size: 12px;
       font-weight: bold;
       color: #3a2e1e;
@@ -262,10 +263,10 @@
     <input type="checkbox" id="toggle-world" /> World Dataset
   </label>
   <label class="toggle-label">
-    <input type="checkbox" id="toggle-french" checked /> French Clergy
+    <input type="checkbox" id="toggle-french" /> French Clergy
   </label>
   <label class="toggle-label">
-    <input type="checkbox" id="toggle-labels" checked /> Map labels
+    <input type="checkbox" id="toggle-labels" /> Map labels
   </label>
   <select id="basemap-select">
     <option value="antique">Antique</option>
