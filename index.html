@@ -7,6 +7,7 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
+  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.5.0/dist/maplibre-gl.css" />
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     html, body { height: 100%; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; }
@@ -190,6 +191,22 @@
     }
     #basemap-select:focus { outline: none; border-color: #7a6040; }
 
+    .geo-label {
+      white-space: nowrap;
+      font-family: Georgia, 'Times New Roman', serif;
+      font-style: italic;
+      color: rgba(60, 35, 5, 0.82);
+      text-shadow:
+        0 0 8px rgba(252, 248, 230, 1),
+        0 0 16px rgba(252, 248, 230, 1),
+        0 0 3px rgba(252, 248, 230, 1);
+      line-height: 1;
+      user-select: none;
+      pointer-events: none;
+      transform: translate(-50%, -50%);
+      display: block;
+    }
+
     .marker-cluster-atlas {
       background: rgba(252, 248, 240, 0.9);
       border: 2px solid #b8a88a;
@@ -218,8 +235,11 @@
   <label class="toggle-label">
     <input type="checkbox" id="toggle-french" checked /> French Clergy
   </label>
+  <label class="toggle-label">
+    <input type="checkbox" id="toggle-labels" checked /> Place names
+  </label>
   <select id="basemap-select">
-    <option value="World_Shaded_Relief">Simple map</option>
+    <option value="antique">Antique</option>
     <option value="World_Topo_Map">Detailed map</option>
   </select>
 
@@ -237,6 +257,9 @@
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+<script src="https://unpkg.com/maplibre-gl@4.5.0/dist/maplibre-gl.js"></script>
+<script src="https://unpkg.com/esri-leaflet@3/dist/esri-leaflet.js"></script>
+<script src="https://unpkg.com/esri-leaflet-vector@4/dist/esri-leaflet-vector.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 <script>
   const EMPIRE_COLORS = {
@@ -273,6 +296,30 @@
   }).setView([15, -20], 3);
   map.attributionControl.setPrefix('<a href="https://leafletjs.com" title="A JavaScript library for interactive maps">Leaflet</a>');
 
+  // Stacked panes so the antique basemap layers composite in the right order, with the
+  // opacity + blend modes the ArcGIS web map assigns (esri-leaflet-vector renders each layer
+  // as its own canvas, so cross-layer blending must be done here via CSS). All below the
+  // marker/cluster panes (z-index 600+).
+  [
+    ['bm-base',  200, 1,    'normal',     'sepia(1) brightness(0.8) hue-rotate(-30deg)'],
+    ['bm-hill',  210, 0.3,  'normal',     'none'],
+    ['bm-bathy', 220, 0.3, 'normal', 'hue-rotate(-80deg)'],
+    ['bm-parch', 230, 1,    'multiply',   'none'],
+    ['bm-fold',  240, 0.9,  'color-burn', 'none'],
+  ].forEach(([name, z, opacity, blend, filter]) => {
+    map.createPane(name);
+    const pane = map.getPane(name);
+    pane.style.zIndex = z;
+    pane.style.opacity = opacity;
+    pane.style.mixBlendMode = blend;
+    pane.style.filter = filter;
+  });
+
+  // Pane for geographic labels — above basemap (200-240), below data markers (600+)
+  map.createPane('geo-labels');
+  map.getPane('geo-labels').style.zIndex = 250;
+  map.getPane('geo-labels').style.pointerEvents = 'none';
+
   function updateMinZoom() {
     // At zoom Z the world is 256×2^Z px wide; we need that ≥ viewport width
     // so minZoom = ceil(log2(viewportWidth / 256)).
@@ -290,12 +337,23 @@
     );
   }
 
-  let basemapLayer = makeBasemap('World_Shaded_Relief').addTo(map);
+  // Replicates the ArcGIS "Khaki Basemap" stack: khaki land/water base, hillshade relief,
+  // dark bathymetry, plus parchment grain and folded-paper crease textures on top.
+  function makeAntiqueBasemap() {
+    return L.layerGroup([
+      L.esri.Vector.vectorTileLayer('abd999723d734c3f8cc2274bf2b6d22d', { pane: 'bm-base' }),
+      L.tileLayer(
+        'https://services.arcgisonline.com/arcgis/rest/services/Elevation/World_Hillshade/MapServer/tile/{z}/{y}/{x}',
+        { pane: 'bm-hill', noWrap: true, attribution: 'Tiles &copy; Esri' }
+      ),
+      L.esri.Vector.vectorTileLayer('a57be56f4279434b9f400620e70a99f5', { pane: 'bm-bathy' }),
+      L.esri.Vector.vectorTileLayer('34b03208322246b08665189c0fffab7b', { pane: 'bm-parch' }),
+      L.esri.Vector.vectorTileLayer('b0c7f075d98e4b91b6cd2bdfaf7288af', { pane: 'bm-fold' }),
+      L.esri.Vector.vectorTileLayer('a57be56f4279434b9f400620e70a99f5', { pane: 'bm-coast' }),
+    ]);
+  }
 
-  const bordersLayer = L.tileLayer(
-    'https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png',
-    { attribution: '&copy; <a href="https://carto.com">CARTO</a>', subdomains: 'abcd', noWrap: true, tileSize: 512, zoomOffset: -1 }
-  ).addTo(map);
+  let basemapLayer = makeAntiqueBasemap().addTo(map);
 
 
 
@@ -585,6 +643,79 @@
     }
   }
 
+  // Font size tiers for geographic labels
+  const LABEL_SZ = {
+    CONTINENT: 20,
+    OCEAN:     17,
+    REGION:    15,
+    ISLAND:    13,
+  };
+
+  // 18th-century cartographic place names relevant to the dataset
+  const GEO_LABELS = [
+    // Continents
+    { text: 'EUROPE',          lat: 50,    lon: 10,    size: LABEL_SZ.CONTINENT, ls: '0.18em', minZoom: 2, maxZoom: 7  },
+    { text: 'AFRICA',          lat: 15,    lon: 12,    size: LABEL_SZ.CONTINENT, ls: '0.18em', minZoom: 2, maxZoom: 6  },
+    { text: 'NORTH AMERICA',   lat: 40,    lon: -115,  size: LABEL_SZ.CONTINENT, ls: '0.14em', minZoom: 2, maxZoom: 4  },
+    { text: 'SOUTH AMERICA',   lat: -13,   lon: -74,   size: LABEL_SZ.CONTINENT, ls: '0.14em', minZoom: 2, maxZoom: 5  },
+    // Oceans
+    { text: 'ATLANTIC  OCEAN', lat: 30,    lon: -60,   size: LABEL_SZ.OCEAN,     ls: '0.22em', minZoom: 2, maxZoom: 5  },
+    { text: 'PACIFIC  OCEAN',  lat: 5,     lon: -145,  size: LABEL_SZ.OCEAN,     ls: '0.22em', minZoom: 2, maxZoom: 5  },
+    { text: 'INDIAN  OCEAN',   lat: -20,   lon: 75,    size: LABEL_SZ.OCEAN,     ls: '0.20em', minZoom: 2, maxZoom: 5  },
+    // Major colonial territories — zoom 3+
+    { text: 'New France',      lat: 48,    lon: -80,   size: LABEL_SZ.REGION,                  minZoom: 3, maxZoom: 8  },
+    { text: 'Louisiana',       lat: 33,    lon: -92,   size: LABEL_SZ.REGION,                  minZoom: 3, maxZoom: 8  },
+    { text: 'New Spain',       lat: 23,    lon: -103,  size: LABEL_SZ.REGION,                  minZoom: 3, maxZoom: 7  },
+    { text: 'Brazil',          lat: -10,   lon: -52,   size: LABEL_SZ.REGION,                  minZoom: 3, maxZoom: 6  },
+    { text: 'Guinea',          lat: 6,     lon: -10,   size: LABEL_SZ.REGION,                  minZoom: 3, maxZoom: 6  },
+    { text: 'Senegambia',      lat: 13.5,  lon: -14,   size: LABEL_SZ.REGION,                  minZoom: 3, maxZoom: 7  },
+    { text: 'Angola',          lat: -9,    lon: 16,    size: LABEL_SZ.REGION,                  minZoom: 3, maxZoom: 7  },
+    { text: 'Gulf of Mexico',  lat: 24.5,  lon: -90,   size: LABEL_SZ.REGION,    ls: '0.05em', minZoom: 3, maxZoom: 7  },
+    { text: 'Caribbean Sea',   lat: 14.5,  lon: -72,   size: LABEL_SZ.REGION,    ls: '0.05em', minZoom: 3, maxZoom: 6  },
+    // Islands and smaller regions — zoom 4+
+    { text: 'Saint-Domingue',  lat: 19,    lon: -72.5, size: LABEL_SZ.ISLAND,                  minZoom: 4, maxZoom: 18 },
+    { text: 'Cuba',            lat: 22,    lon: -79.5, size: LABEL_SZ.ISLAND,                  minZoom: 4, maxZoom: 18 },
+    { text: 'Jamaica',         lat: 17.9,  lon: -77.3, size: LABEL_SZ.ISLAND,                  minZoom: 4, maxZoom: 18 },
+    { text: 'Martinique',      lat: 14.6,  lon: -61,   size: LABEL_SZ.ISLAND,                  minZoom: 4, maxZoom: 18 },
+    { text: 'Guadeloupe',      lat: 16.3,  lon: -61.5, size: LABEL_SZ.ISLAND,                  minZoom: 4, maxZoom: 18 },
+    { text: 'Cayenne',         lat: 4.9,   lon: -52.3, size: LABEL_SZ.ISLAND,                  minZoom: 4, maxZoom: 18 },
+    { text: 'Bourbon Island',  lat: -21,   lon: 55.5,  size: LABEL_SZ.ISLAND,                  minZoom: 4, maxZoom: 18 },
+    { text: 'Isle of France',  lat: -20.3, lon: 57.5,  size: LABEL_SZ.ISLAND,                  minZoom: 4, maxZoom: 18 },
+  ];
+
+  const labelsGroup = L.layerGroup().addTo(map);
+  const labelMarkers = [];
+
+  GEO_LABELS.forEach(def => {
+    const icon = L.divIcon({
+      html: `<div class="geo-label" style="font-size:${def.size}px;${def.ls ? `letter-spacing:${def.ls};` : ''}">${def.text}</div>`,
+      className: '',
+      iconSize: [0, 0],
+      iconAnchor: [0, 0],
+    });
+    const marker = L.marker([def.lat, def.lon], {
+      icon,
+      interactive: false,
+      pane: 'geo-labels',
+    });
+    labelMarkers.push({ marker, def });
+    labelsGroup.addLayer(marker);
+  });
+
+  function updateLabelVisibility() {
+    const z = map.getZoom();
+    const showLabels = document.getElementById('toggle-labels').checked;
+    labelMarkers.forEach(({ marker, def }) => {
+      const el = marker.getElement();
+      if (!el) return;
+      el.style.display = (showLabels && z >= def.minZoom && z <= def.maxZoom) ? '' : 'none';
+    });
+  }
+
+  map.on('zoomend', updateLabelVisibility);
+  document.getElementById('toggle-labels').addEventListener('change', updateLabelVisibility);
+  setTimeout(updateLabelVisibility, 100);
+
   document.getElementById('search-box').addEventListener('input', applyFilters);
   document.getElementById('toggle-world').addEventListener('change', applyFilters);
   document.getElementById('toggle-french').addEventListener('change', applyFilters);
@@ -592,12 +723,9 @@
 
   document.getElementById('basemap-select').addEventListener('change', function () {
     map.removeLayer(basemapLayer);
-    basemapLayer = makeBasemap(this.value).addTo(map);
-    if (this.value === 'World_Shaded_Relief') {
-      bordersLayer.addTo(map);
-    } else {
-      bordersLayer.remove();
-    }
+    basemapLayer = (this.value === 'antique'
+      ? makeAntiqueBasemap()
+      : makeBasemap(this.value)).addTo(map);
   });
 
   loadData();
