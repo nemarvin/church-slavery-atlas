@@ -304,6 +304,8 @@
   const GLOBAL_MAX = 7000;
   const YEAR_MIN = 1600;
   const YEAR_MAX = 1820;
+  // from this zoom level onwards, clicking on a cluster expands it instead of zooming in
+  const SPIDERFY_ZOOM = 9;
 
   function calcRadius(count) {
     const n = parseFloat(count);
@@ -407,7 +409,7 @@
   let allPoints = [];
   const markersLayer = L.markerClusterGroup({
     showCoverageOnHover: false,
-    zoomToBoundsOnClick: true,
+    zoomToBoundsOnClick: false,
     maxClusterRadius: 20,
     iconCreateFunction: function(cluster) {
       const size = 34;
@@ -424,13 +426,22 @@
 
   markersLayer.on('clustermouseover', function(e) {
     const count = e.layer.getChildCount();
-    clusterTooltip.setContent(`${count} entr${count === 1 ? 'y' : 'ies'} — click to zoom in`);
+    const action = map.getZoom() >= SPIDERFY_ZOOM ? 'expand' : 'zoom in';
+    clusterTooltip.setContent(`${count} entr${count === 1 ? 'y' : 'ies'} — click to ${action}`);
     clusterTooltip.setLatLng(e.layer.getLatLng());
     clusterTooltip.addTo(map);
   });
 
   markersLayer.on('clustermouseout', function() {
     clusterTooltip.remove();
+  });
+
+  markersLayer.on('clusterclick', function(e) {
+    if (map.getZoom() >= SPIDERFY_ZOOM) {
+      e.layer.spiderfy();
+    } else {
+      e.layer.zoomToBounds({ padding: [20, 20] });
+    }
   });
 
   function normalizeFile1(row) {
@@ -736,11 +747,20 @@
     const box = document.createElement('div');
     box.id = 'debug-box';
     document.body.appendChild(box);
+    let cursorLat = null, cursorLng = null;
     function updateDebug() {
       const c = map.getCenter();
-      box.textContent = `lat ${c.lat.toFixed(4)}  lon ${c.lng.toFixed(4)}  zoom ${map.getZoom()}`;
+      const cursor = cursorLat !== null
+        ? `cursor ${cursorLat.toFixed(4)}, ${cursorLng.toFixed(4)}  ·  `
+        : '';
+      box.textContent = `${cursor}center ${c.lat.toFixed(4)}, ${c.lng.toFixed(4)}  ·  zoom ${map.getZoom()}`;
     }
     map.on('move zoom', updateDebug);
+    map.on('click', function(e) {
+      cursorLat = e.latlng.lat;
+      cursorLng = e.latlng.lng;
+      updateDebug();
+    });
     updateDebug();
   }
 
