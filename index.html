@@ -660,6 +660,7 @@
 
     const filtered = allPoints.filter(p => {
       if (p.source === 'World Dataset' && !showWorld) return false;
+      if (p.source === 'World Dataset' && p.empire === 'French') return false;
       if (p.source === 'French Clergy Dataset' && !showFrench) return false;
       if (rangeValid && p.yearNum !== null && (p.yearNum < yMin || p.yearNum > yMax)) return false;
       if (!query) return true;
