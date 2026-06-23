@@ -134,7 +134,7 @@
       height: 16px;
       border-radius: 50%;
       flex-shrink: 0;
-      border: 1px solid rgba(255,255,255,0.6);
+      border: 1px solid rgba(255,255,255,0.1);
     }
 .leaflet-popup-content {
       font-family: inherit;
@@ -438,7 +438,7 @@
           angle = end;
         });
       }
-      const html = `<svg width="${size}" height="${size}" xmlns="http://www.w3.org/2000/svg">${slices}<circle cx="${r}" cy="${r}" r="${r - 0.6}" fill="none" stroke="rgba(255,255,255,0.7)" stroke-width="1.2"/></svg>`;
+      const html = `<svg width="${size}" height="${size}" xmlns="http://www.w3.org/2000/svg">${slices}<circle cx="${r}" cy="${r}" r="${r - 0.6}" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="1.2"/></svg>`;
       return L.divIcon({ html, className: '', iconSize: L.point(size, size), iconAnchor: L.point(r, r) });
     },
   }).addTo(map);
