@@ -410,7 +410,7 @@
   const markersLayer = L.markerClusterGroup({
     showCoverageOnHover: false,
     zoomToBoundsOnClick: false,
-    maxClusterRadius: 50,
+    maxClusterRadius: function(zoom) { return zoom >= 9 ? 1 : 50; },
     iconCreateFunction: function(cluster) {
       const size = 34;
       return L.divIcon({
