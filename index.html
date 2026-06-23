@@ -413,12 +413,32 @@
     maxClusterRadius: function(zoom) { return zoom >= 9 ? 1 : 50; },
     iconCreateFunction: function(cluster) {
       const size = 34;
-      return L.divIcon({
-        html: `<div class="marker-cluster-atlas" style="width:${size}px;height:${size}px"></div>`,
-        className: '',
-        iconSize: L.point(size, size),
-        iconAnchor: L.point(size / 2, size / 2),
+      const r = size / 2;
+      const children = cluster.getAllChildMarkers();
+      const colorCounts = {};
+      children.forEach(m => {
+        const c = m.options.empireColor || DEFAULT_COLOR;
+        colorCounts[c] = (colorCounts[c] || 0) + 1;
       });
+      const total = children.length;
+      const entries = Object.entries(colorCounts);
+      let slices = '';
+      if (entries.length === 1) {
+        slices = `<circle cx="${r}" cy="${r}" r="${r}" fill="${entries[0][0]}" opacity="0.85"/>`;
+      } else {
+        let angle = -Math.PI / 2;
+        entries.forEach(([color, count]) => {
+          const sweep = (count / total) * 2 * Math.PI;
+          const end = angle + sweep;
+          const x1 = r + r * Math.cos(angle), y1 = r + r * Math.sin(angle);
+          const x2 = r + r * Math.cos(end),   y2 = r + r * Math.sin(end);
+          const large = sweep > Math.PI ? 1 : 0;
+          slices += `<path d="M${r},${r} L${x1},${y1} A${r},${r} 0 ${large},1 ${x2},${y2} Z" fill="${color}" opacity="0.85"/>`;
+          angle = end;
+        });
+      }
+      const html = `<svg width="${size}" height="${size}" xmlns="http://www.w3.org/2000/svg">${slices}<circle cx="${r}" cy="${r}" r="${r - 0.6}" fill="none" stroke="rgba(255,255,255,0.7)" stroke-width="1.2"/></svg>`;
+      return L.divIcon({ html, className: '', iconSize: L.point(size, size), iconAnchor: L.point(r, r) });
     },
   }).addTo(map);
 
@@ -558,7 +578,7 @@
         iconSize: [size, size],
         iconAnchor: [radius, radius],
       });
-      const marker = L.marker([p.lat, p.lon], { icon });
+      const marker = L.marker([p.lat, p.lon], { icon, empireColor: color });
       marker.bindPopup(buildPopup(p, query), {
         maxWidth: 300,
         autoPan: false,
