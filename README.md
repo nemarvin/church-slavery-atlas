@@ -19,15 +19,21 @@ An interactive world map of 18th-century ecclesiastical slaveholding records, dr
 - **Clustering** groups nearby points at lower zoom levels — click a cluster to zoom in
 - **Year range filter** narrows records by approximate date
 - **Search highlighting** marks matching text within open popups
+- **Basemap selector** switches between an Antique (parchment/cartographic) style and a Modern topographic basemap
+- **Geographic labels** toggle 18th-century place names at zoom-appropriate sizes
 
 ## Technical
 
 The map is a single static HTML file with no build step.
 
-- **[Leaflet 1.9](https://leafletjs.com/)** — map rendering and interaction
-- **[Leaflet.markercluster 1.5](https://github.com/Leaflet/Leaflet.markercluster)** — proximity-based point clustering
-- **[PapaParse 5.4](https://www.papaparse.com/)** — CSV parsing in the browser
-- **Basemap:** ESRI World Shaded Relief tiles, with an optional CartoDB labels overlay
+- **[Leaflet 1.9.4](https://leafletjs.com/)** — map rendering and interaction
+- **[Leaflet.markercluster 1.5.3](https://github.com/Leaflet/Leaflet.markercluster)** — proximity-based point clustering
+- **[MapLibre GL 4.5](https://maplibre.org/)** — vector tile rendering (used by the ESRI vector basemap layers)
+- **[ESRI Leaflet 3](https://developers.arcgis.com/esri-leaflet/)** — ESRI raster tile integration
+- **[ESRI Leaflet Vector 4](https://developers.arcgis.com/esri-leaflet/api-reference/layers/vector-tile-layer/)** — ESRI vector tile layer integration
+- **[PapaParse 5.4.1](https://www.papaparse.com/)** — CSV parsing in the browser
+- **Basemaps:** two options switchable via a dropdown — *Antique* (a stacked ESRI Khaki Basemap with hillshade, dark bathymetry, parchment grain, and folded-paper crease textures composited via CSS `mix-blend-mode`) and *Modern* (ESRI World Topo Map raster tiles)
+- **Geographic labels** (`labels.js`) — 18th-century place names rendered as `L.divIcon` markers on a dedicated pane, shown/hidden by zoom range and a toggle
 - **Markers** are `L.marker` instances with `L.divIcon` circle icons sized proportionally to enslaved-person counts (square-root scale, 8–40 px radius)
 - **Popups** are rendered from inline HTML strings; search terms are highlighted via a regex replace wrapping matches in `<mark>` tags
 
