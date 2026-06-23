@@ -756,7 +756,7 @@
   document.getElementById('search-box').addEventListener('input', applyFilters);
   document.getElementById('toggle-world').addEventListener('change', applyFilters);
   document.getElementById('toggle-french').addEventListener('change', applyFilters);
-  document.getElementById('reset-zoom').addEventListener('click', () => map.setView([15, -20], 3));
+  document.getElementById('reset-zoom').addEventListener('click', () => map.setView([15, 10], 3));
 
   document.getElementById('basemap-select').addEventListener('change', function () {
     map.removeLayer(basemapLayer);
