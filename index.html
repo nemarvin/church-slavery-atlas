@@ -424,7 +424,7 @@
       const entries = Object.entries(colorCounts);
       let slices = '';
       if (entries.length === 1) {
-        slices = `<circle cx="${r}" cy="${r}" r="${r}" fill="${entries[0][0]}" opacity="0.65"/>`;
+        slices = `<circle cx="${r}" cy="${r}" r="${r}" fill="${entries[0][0]}" opacity="0.45"/>`;
       } else {
         let angle = -Math.PI / 2;
         entries.forEach(([color, count]) => {
@@ -433,7 +433,7 @@
           const x1 = r + r * Math.cos(angle), y1 = r + r * Math.sin(angle);
           const x2 = r + r * Math.cos(end),   y2 = r + r * Math.sin(end);
           const large = sweep > Math.PI ? 1 : 0;
-          slices += `<path d="M${r},${r} L${x1},${y1} A${r},${r} 0 ${large},1 ${x2},${y2} Z" fill="${color}" opacity="0.65"/>`;
+          slices += `<path d="M${r},${r} L${x1},${y1} A${r},${r} 0 ${large},1 ${x2},${y2} Z" fill="${color}" opacity="0.45"/>`;
           angle = end;
         });
       }
